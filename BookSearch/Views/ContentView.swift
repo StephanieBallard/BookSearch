@@ -16,6 +16,9 @@ struct ContentView: View {
             Text("Hello, world!")
         }
         .padding()
+        .onAppear {
+            BookSearchViewModel().fetchBooks(title: "The wizard of oz")
+        }
     }
 }
 
