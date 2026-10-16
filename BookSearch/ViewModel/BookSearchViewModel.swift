@@ -21,36 +21,41 @@ final class BookSearchViewModel: ObservableObject {
     @Published private(set) var loadingState: ContentLoadingState = .idle
 
     private let bookService: BookServiceable
-    private var fetchTask: Task<Void, Never>?
 
     init(bookService: BookServiceable? = nil) {
         self.bookService = bookService ?? BookService()
     }
 
-    func fetchBooks(title: String) {
-        let query = title.trimmingCharacters(in: .whitespacesAndNewlines)
+    func fetchBooks(title: String) async {
+        let title = title.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        fetchTask?.cancel()
-
-        guard !query.isEmpty else {
+        guard !title.isEmpty else {
             loadingState = .idle
             return
         }
 
+        do {
+            try await Task.sleep(for: .milliseconds(350))
+        } catch {
+            return
+        }
+
+        guard !Task.isCancelled else { return }
+
         loadingState = .loading
 
-        fetchTask = Task {
-            do {
-                let books = try await bookService.fetchBooks(title: query)
+        do {
+            let books = try await bookService.fetchBooks(title: title)
 
-                guard !Task.isCancelled else { return }
+            guard !Task.isCancelled else { return }
 
-                loadingState = books.isEmpty ? .empty : .complete(books)
-            } catch {
-                guard !Task.isCancelled else { return }
+            loadingState = books.isEmpty ? .empty : .complete(books)
+        } catch is CancellationError {
+            return
+        } catch {
+            guard !Task.isCancelled else { return }
 
-                loadingState = .error(error)
-            }
+            loadingState = .error(error)
         }
     }
 }
