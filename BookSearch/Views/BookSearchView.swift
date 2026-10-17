@@ -1,5 +1,5 @@
 //
-//  ContentView.swift
+//  BookSearchView.swift
 //  BookSearch
 //
 //  Created by Stephanie Ballard on 10/15/26.
@@ -33,26 +33,28 @@ struct BookSearchView: View {
         case .loading:
             ProgressView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .accessibilityLabel("Loading books")
 
         case .empty:
             ContentUnavailableView.search(text: searchString)
 
-        case .error(let error):
-            ContentUnavailableView("Something went wrong. Please retry your search.",
+        case .error:
+            ContentUnavailableView("Something went wrong.",
                                    systemImage: "exclamationmark.triangle",
-                                   description: Text(error.localizedDescription))
+                                   description: Text("Unable to load books. Try a different search."))
 
         case .complete(let books):
             List(books) { book in
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Title: \(book.title)")
+                    Text(book.title)
 
-                    if let authors = book.author, !authors.isEmpty {
+                    if let authors = book.authors, !authors.isEmpty {
                         Text("Written by: \(authors.joined(separator: ", "))")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
                 }
+                .accessibilityElement(children: .combine)
             }
         }
     }
