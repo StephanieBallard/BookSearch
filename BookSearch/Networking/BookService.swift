@@ -1,5 +1,5 @@
 //
-//  Untitled.swift
+//  BookService.swift
 //  BookSearch
 //
 //  Created by Stephanie Ballard on 10/15/26.
@@ -11,34 +11,46 @@ protocol BookServiceable {
     func fetchBooks(title: String) async throws -> [Book]
 }
 
-enum NetworkingError: Error {
-    case incorrectURL
-    case requestFailed
-}
-
 final class BookService: BookServiceable {
-    let baseURL = "https://openlibrary.org/search.json"
+    private static let baseURL = "https://openlibrary.org/search.json"
+    private let session: URLSession
+
+    init(session: URLSession = .shared) {
+        self.session = session
+    }
 
     func fetchBooks(title: String) async throws -> [Book] {
-        guard var components = URLComponents(string: baseURL) else {
-            throw NetworkingError.incorrectURL
+        let title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !title.isEmpty else { return [] }
+
+        let url = try createSearchURL(title: title)
+
+        let (data, response) = try await session.data(from: url)
+
+        guard let response = response as? HTTPURLResponse else {
+            throw NetworkingError.invalidResponse
+        }
+
+        guard (200..<300).contains(response.statusCode) else {
+            throw NetworkingError.requestFailed(statusCode: response.statusCode)
+        }
+
+        return try JSONDecoder().decode(BookSearchResponse.self, from: data).docs
+    }
+
+    private func createSearchURL(title: String) throws -> URL {
+        guard var components = URLComponents(string: BookService.baseURL) else {
+            throw NetworkingError.invalidURL
         }
 
         components.queryItems = [URLQueryItem(name: "title", value: title),
                                  URLQueryItem(name: "limit", value: "10")]
 
         guard let url = components.url else {
-            throw NetworkingError.incorrectURL
+            throw NetworkingError.invalidURL
         }
 
-        let (data, response) = try await URLSession.shared.data(from: url)
-
-        guard let httpResponse = response as? HTTPURLResponse, (200..<300).contains(httpResponse.statusCode) else {
-            throw NetworkingError.requestFailed
-        }
-
-        let results = try JSONDecoder().decode(BookSearchResponse.self, from: data)
-
-        return results.docs
+        return url
     }
 }

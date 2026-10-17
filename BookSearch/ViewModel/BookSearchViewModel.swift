@@ -7,6 +7,7 @@
 
 import Combine
 import Foundation
+import OSLog
 
 @MainActor
 final class BookSearchViewModel: ObservableObject {
@@ -21,6 +22,7 @@ final class BookSearchViewModel: ObservableObject {
     @Published private(set) var loadingState: ContentLoadingState = .idle
 
     private let bookService: BookServiceable
+    private let logger = Logger()
 
     init(bookService: BookServiceable? = nil) {
         self.bookService = bookService ?? BookService()
@@ -34,13 +36,7 @@ final class BookSearchViewModel: ObservableObject {
             return
         }
 
-        do {
-            try await Task.sleep(for: .milliseconds(350))
-        } catch {
-            return
-        }
-
-        guard !Task.isCancelled else { return }
+        guard await debounce() else { return }
 
         loadingState = .loading
 
@@ -50,12 +46,22 @@ final class BookSearchViewModel: ObservableObject {
             guard !Task.isCancelled else { return }
 
             loadingState = books.isEmpty ? .empty : .complete(books)
-        } catch is CancellationError {
-            return
         } catch {
             guard !Task.isCancelled else { return }
+            guard !(error is CancellationError) else { return }
+            guard (error as? URLError)?.code != .cancelled else { return }
 
+            logger.error("Book search failed: \(String(describing: error), privacy: .private)")
             loadingState = .error(error)
+        }
+    }
+
+    private func debounce() async -> Bool {
+        do {
+            try await Task.sleep(for: .milliseconds(350))
+            return !Task.isCancelled
+        } catch {
+            return false
         }
     }
 }

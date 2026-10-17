@@ -1,5 +1,5 @@
 //
-//  Untitled.swift
+//  Book.swift
 //  BookSearch
 //
 //  Created by Stephanie Ballard on 10/15/26.
@@ -12,11 +12,11 @@ struct BookSearchResponse: Decodable {
 struct Book: Decodable, Identifiable {
     let id: String
     let title: String
-    let author: [String]?
+    let authors: [String]?
 
     enum CodingKeys: String, CodingKey {
         case id = "key"
         case title
-        case author = "author_name"
+        case authors = "author_name"
     }
 }
